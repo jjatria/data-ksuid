@@ -1,0 +1,6 @@
+*.swp
+cover/
+cover_db/
+.build/
+nytprof.out
+nytprof/
