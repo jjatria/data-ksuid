@@ -23,7 +23,6 @@ our %EXPORT_TAGS = ( all => \@EXPORT_OK );
 
 use Carp ();
 use Crypt::URandom ();
-use Math::BigInt;
 use Scalar::Util ();
 
 # KSUID's epoch starts more recently so that the 32-bit
@@ -31,13 +30,24 @@ use Scalar::Util ();
 # of around 136 years from March 2017. This number (14e8)
 # was picked to be easy to remember.
 use constant EPOCH => 1_400_000_000;
-use constant MAX_TIME => EPOCH + unpack( 'N', "\xff" x 4 );
 
+use constant {
+    # For base-62 encoding
+    KSUID_BASE  => 4_294_967_296, # 0x100_000_000
+    STRING_BASE => 62,
+
+    MAX_TIME    => EPOCH + unpack( 'N', "\xff" x 4 ),
+};
+
+# Public constants
+# The ones defined above are for internal use only
 use constant {
     MAX => "\xff" x 20,
     MIN => "\x00" x 20,
-    MIN_STRING => '0' x 20,
-    MAX_STRING => Math::BigInt->from_bytes("\xff" x 20)->to_base(62),
+
+    # Math::BigInt->from_bytes("\xff" x 20)->to_base(62)
+    MAX_STRING => 'aWgEPTl1tmebfsQzFP4bxwgy80V',
+    MIN_STRING => '000000000000000000000000000',
 };
 
 # Trusting private functions
@@ -49,9 +59,76 @@ my $safely_printed = sub {
         : 'an undefined value';
 };
 
-my $ksuid_to_string  = sub { Math::BigInt->from_bytes($_[0])->to_base(62) };
-my $string_to_ksuid  = sub { Math::BigInt->from_base($_[0], 62)->to_bytes };
-my $time_of_ksuid    = sub { EPOCH + unpack 'N', substr( $_[0], 0, 4 )   };
+my %value62 = map {
+    $_ =~ /[A-Z]/ ? ( $_ => ord($_) - ord('A') + 10 ) :
+    $_ =~ /[a-z]/ ? ( $_ => ord($_) - ord('a') + 36 ) :
+                    ( $_ =>     $_ );
+} 0 .. 9, 'A' .. 'Z', 'a' .. 'z';
+
+my %digit62 = reverse %value62;
+
+my $ksuid_to_string = sub {
+    my @parts  = unpack 'N*', $_[0];
+    my @digits = (0) x 27;
+
+    for ( 0 .. $#digits ) {
+        my @quotient;
+        my $remainder = 0;
+
+        for (@parts) {
+            my $value  = int($_) + int($remainder) * KSUID_BASE;
+            my $digit  = $value / STRING_BASE;
+            $remainder = $value % STRING_BASE;
+
+            push @quotient, $digit
+                if @quotient || $digit;
+        }
+
+        # We push into this in reverse order for convenience
+        $digits[$_] = $remainder;
+
+        @parts = @quotient or last;
+    }
+
+    join '', @digit62{ reverse @digits };
+};
+
+my $string_to_ksuid = sub {
+    my @digits = (0) x 20;
+    my @parts = @value62{ split //, $_[0] };
+
+    die unless @parts == 27;
+
+    my $n = 0;
+    while ( @parts ) {
+        my @quotient;
+        my $remainder = 0;
+
+        for (@parts) {
+            my $value  = int($_) + int($remainder) * STRING_BASE;
+            my $digit  = $value / KSUID_BASE;
+            $remainder = $value % KSUID_BASE;
+
+            push @quotient, $digit % 256
+                if @quotient || $digit;
+        }
+
+        $digits[$n++] = ( $remainder       ) % 256;
+        $digits[$n++] = ( $remainder >> 8  ) % 256;
+        $digits[$n++] = ( $remainder >> 16 ) % 256;
+        $digits[$n++] = ( $remainder >> 24 ) % 256;
+
+        @parts = @quotient or last;
+        last if $n == @digits;
+    }
+
+    pack 'C*', reverse @digits;
+};
+
+my $time_of_ksuid = sub {
+    EPOCH + unpack 'N', substr( $_[0], 0, 4 );
+};
+
 my $payload_of_ksuid = sub { substr $_[0], 4, 20 };
 
 my $next_ksuid = sub {
@@ -64,8 +141,13 @@ my $next_ksuid = sub {
     return create_ksuid( $time + 1, "\x00" x 16 )
         if $data eq ( "\xff" x 16 );
 
-    my $next = Math::BigInt->from_bytes($data) + 1;
-    create_ksuid( $time, join '', $next->to_bytes );
+    my @parts = reverse $data =~ /[\w\W]{4}/g;
+    for (@parts) {
+        $_ = pack 'N', unpack('N', $_) + 1;
+        last unless $_ eq "\x00" x 4;
+    }
+
+    create_ksuid( $time, join '', reverse @parts );
 };
 
 my $previous_ksuid = sub {
@@ -78,8 +160,13 @@ my $previous_ksuid = sub {
     return create_ksuid( $time - 1, "\xff" x 16 )
         if $data eq ( "\x00" x 16 );
 
-    my $prev = Math::BigInt->from_bytes($data) - 1;
-    create_ksuid( $time, join '', $prev->to_bytes );
+    my @parts = reverse $data =~ /[\w\W]{4}/g;
+    for (@parts) {
+        $_ = pack 'N', unpack('N', $_) - 1;
+        last unless $_ eq "\xff" x 4;
+    }
+
+    create_ksuid( $time, join '', reverse @parts );
 };
 
 # Distrustful user-facing functions
@@ -213,6 +300,8 @@ sub previous {
 delete $Data::KSUID::{$_} for qw(
     MAX_TIME
     EPOCH
+    KSUID_BASE
+    STRING_BASE
 );
 
 1;
