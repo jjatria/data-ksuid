@@ -5,40 +5,54 @@ use Test2::Tools::Spec;
 
 use Data::KSUID ':all';
 
-tests create => sub {
-    ok create_ksuid, 'Creates a random KSUID';
+describe create => sub {
+    my ( $new, $to_ksuid );
 
-    ok my $k1 = create_ksuid( my $time = time + 1000 ),
-        'Creates a random KSUID with a timestamp';
+    case binary => sub {
+        $new = \&Data::KSUID::create_ksuid;
+        $to_ksuid = sub { shift };
+    };
 
-    ok my $k2 = create_ksuid( undef, "\xde\xfa\xce\xd0" x 4 ),
-        'Creates a random KSUID with a payload';
+    case string => sub {
+        $new = \&Data::KSUID::create_ksuid_string;
+        $to_ksuid = sub { goto \&string_to_ksuid };
+    };
 
-    is time_of_ksuid($k1), $time,
-        'Created KSUID with specified time';
+    it works => { flat => 1 } => sub {
+        ok $new->(), 'Creates a random KSUID';
 
-    is payload_of_ksuid($k2), "\xde\xfa\xce\xd0" x 4,
-        'Created KSUID with specified payload';
+        ok my $k1 = $new->( my $time = time + 1000 ),
+            'Creates a random KSUID with a timestamp';
 
-    like dies { create_ksuid "tomorrow" },
-        qr/^Timestamp must be numeric/,
-        'Rejects timestamps that are not numbers';
+        ok my $k2 = $new->( undef, "\xde\xfa\xce\xd0" x 4 ),
+            'Creates a random KSUID with a payload';
 
-    like dies { create_ksuid -123 },
-        qr/^Timestamp must be between 0 and/,
-        'Rejects timestamps that are too small';
+        is time_of_ksuid($k1->$to_ksuid), $time,
+            'Created KSUID with specified time';
 
-    like dies { create_ksuid 999999999999999 },
-        qr/^Timestamp must be between 0 and/,
-        'Rejects timestamps that are too big';
+        is payload_of_ksuid($k2->$to_ksuid), "\xde\xfa\xce\xd0" x 4,
+            'Created KSUID with specified payload';
 
-    like dies { create_ksuid undef, "\x01" x 15 },
-        qr/^KSUID payloads must have 16 bytes, got 15 instead/,
-        'Rejects payloads that are too small';
+        like dies { $new->("tomorrow") },
+            qr/^Timestamp must be numeric/,
+            'Rejects timestamps that are not numbers';
 
-    like dies { create_ksuid undef, "\x01" x 17 },
-        qr/^KSUID payloads must have 16 bytes, got 17 instead/,
-        'Rejects payloads that are too big';
+        like dies { $new->(-123) },
+            qr/^Timestamp must be between 0 and/,
+            'Rejects timestamps that are too small';
+
+        like dies { $new->(999999999999999) },
+            qr/^Timestamp must be between 0 and/,
+            'Rejects timestamps that are too big';
+
+        like dies { $new->( undef, "\x01" x 15 ) },
+            qr/^KSUID payloads must have 16 bytes, got instead 15/,
+            'Rejects payloads that are too small';
+
+        like dies { $new->( undef, "\x01" x 17 ) },
+            qr/^KSUID payloads must have 16 bytes, got instead 17/,
+            'Rejects payloads that are too big';
+    };
 };
 
 describe serde => sub {
@@ -62,53 +76,87 @@ describe serde => sub {
 };
 
 describe validation => sub {
-    my ( $code, $error );
+    describe explicit => sub {
+        my $code;
 
-    before_case reset => sub { undef $error };
+        case is_ksuid_string => sub {
+            $code = \&Data::KSUID::is_ksuid_string;
+        };
 
-    case string_to_ksuid => sub {
-        $code = \&Data::KSUID::string_to_ksuid;
-        $error = qr/^Expected a string KSUID/;
+        case is_ksuid => sub {
+            $code = \&Data::KSUID::is_ksuid;
+        };
+
+        it works => { flat => 1 } => sub {
+            is $code->(), F,
+                'Rejects implicit undef';
+
+            is $code->(undef), F,
+                'Rejects implicit undef';
+
+            is $code->(123), F,
+                'Rejects positive numeric';
+
+            is $code->(-123), F,
+                'Rejects negative numeric';
+
+            is $code->(''), F,
+                'Rejects the empty string';
+
+            is $code->('z' x 27), F,
+                'Rejects string beyond upper boundary';
+        };
     };
 
-    for my $name (qw(
-        ksuid_to_string
-        next_ksuid
-        payload_of_ksuid
-        previous_ksuid
-        time_of_ksuid
-    )) {
-        case $name => sub {
-            $code = Data::KSUID->can($name);
+    describe implicit => sub {
+        my ( $code, $error );
+
+        before_case reset => sub { undef $error };
+
+        case string_to_ksuid => sub {
+            $code = \&Data::KSUID::string_to_ksuid;
+            $error = qr/^Expected a string KSUID/;
         };
-    }
 
-    tests 'bad data' => sub {
-        $error //= qr/^Expected a valid KSUID/;
+        for my $name (qw(
+            ksuid_to_string
+            next_ksuid
+            payload_of_ksuid
+            previous_ksuid
+            time_of_ksuid
+        )) {
+            case $name => sub {
+                $code = Data::KSUID->can($name);
+            };
+        }
 
-        like dies { $code->() },
-            qr/$error, got instead an undefined value/,
-            'Rejects implicit undef';
+        tests 'bad data' => sub {
+            $error //= qr/^Expected a valid KSUID/;
 
-        like dies { $code->(undef) },
-            qr/$error, got instead an undefined value/,
-            'Rejects implicit undef';
+            like dies { $code->() },
+                qr/$error, got instead an undefined value/,
+                'Rejects implicit undef';
 
-        like dies { $code->(123) },
-            qr/$error, got instead "123"/,
-            'Rejects positive numeric';
+            like dies { $code->(undef) },
+                qr/$error, got instead an undefined value/,
+                'Rejects implicit undef';
 
-        like dies { $code->(-123) },
-            qr/$error, got instead "-123"/,
-            'Rejects negative numeric';
+            like dies { $code->(123) },
+                qr/$error, got instead "123"/,
+                'Rejects positive numeric';
 
-        like dies { $code->('') },
-            qr/$error, got instead ""/,
-            'Rejects the empty string';
+            like dies { $code->(-123) },
+                qr/$error, got instead "-123"/,
+                'Rejects negative numeric';
 
-        like dies { $code->('z' x 27) },
-            qr/$error, got instead "z{27}"/,
-            'Rejects string beyond upper boundary';
+            like dies { $code->('') },
+                qr/$error, got instead ""/,
+                'Rejects the empty string';
+
+            like dies { $code->('z' x 27) },
+                qr/$error, got instead "z{27}"/,
+                'Rejects string beyond upper boundary';
+        };
     };
 };
 

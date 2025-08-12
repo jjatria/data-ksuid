@@ -31,11 +31,11 @@ tests create => sub {
         'Rejects timestamps that are too big';
 
     like dies { CLASS->new( undef, "\x01" x 15 ) },
-        qr/^KSUID payloads must have 16 bytes, got 15 instead/,
+        qr/^KSUID payloads must have 16 bytes, got instead 15/,
         'Rejects payloads that are too small';
 
     like dies { CLASS->new( undef, "\x01" x 17 ) },
-        qr/^KSUID payloads must have 16 bytes, got 17 instead/,
+        qr/^KSUID payloads must have 16 bytes, got instead 17/,
         'Rejects payloads that are too big';
 };
 

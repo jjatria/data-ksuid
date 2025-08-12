@@ -1,4 +1,4 @@
-# ABSTRACT: KSUIDs for Perl
+# ABSTRACT: K-Sortable Unique IDentifiers
 package Data::KSUID;
 
 use strict;
@@ -10,13 +10,15 @@ use parent 'Exporter';
 
 our @EXPORT_OK = qw(
     create_ksuid
-    ksuid_to_string
-    string_to_ksuid
+    create_ksuid_string
+    is_ksuid
     is_ksuid_string
-    time_of_ksuid
-    payload_of_ksuid
+    ksuid_to_string
     next_ksuid
+    payload_of_ksuid
     previous_ksuid
+    string_to_ksuid
+    time_of_ksuid
 );
 
 our %EXPORT_TAGS = ( all => \@EXPORT_OK );
@@ -193,6 +195,10 @@ sub create_ksuid {
     $payload ||= Crypt::URandom::urandom(16);
 
     pack( 'N', $time - EPOCH ) . $payload;
+}
+
+sub create_ksuid_string {
+    create_ksuid(@_)->$ksuid_to_string
 }
 
 sub ksuid_to_string {
