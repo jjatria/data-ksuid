@@ -26,6 +26,7 @@ our %EXPORT_TAGS = ( all => \@EXPORT_OK );
 use Carp ();
 use Crypt::URandom ();
 use Scalar::Util ();
+use Sub::Util ();
 
 # KSUID's epoch starts more recently so that the 32-bit
 # number space gives a significantly higher useful lifetime
@@ -54,12 +55,12 @@ use constant {
 
 # Trusting private functions
 
-my $safely_printed = sub {
+my $safely_printed = Sub::Util::set_subname( safely_printed => sub {
     require B;
     defined $_[0]
         ? B::perlstring($_[0])
         : 'an undefined value';
-};
+});
 
 my %value62 = map {
     $_ =~ /[A-Z]/ ? ( $_ => ord($_) - ord('A') + 10 ) :
@@ -69,7 +70,7 @@ my %value62 = map {
 
 my %digit62 = reverse %value62;
 
-my $ksuid_to_string = sub {
+my $ksuid_to_string = Sub::Util::set_subname( ksuid_to_string => sub {
     my @parts  = unpack 'N*', $_[0];
     my @digits = (0) x 27;
 
@@ -93,9 +94,9 @@ my $ksuid_to_string = sub {
     }
 
     join '', @digit62{ reverse @digits };
-};
+});
 
-my $string_to_ksuid = sub {
+my $string_to_ksuid = Sub::Util::set_subname( string_to_ksuid => sub {
     my @digits = (0) x 20;
     my @parts = @value62{ split //, $_[0] };
 
@@ -125,15 +126,17 @@ my $string_to_ksuid = sub {
     }
 
     pack 'C*', reverse @digits;
-};
+});
 
-my $time_of_ksuid = sub {
+my $time_of_ksuid = Sub::Util::set_subname( time_of_ksuid => sub {
     EPOCH + unpack 'N', substr( $_[0], 0, 4 );
-};
+});
 
-my $payload_of_ksuid = sub { substr $_[0], 4, 20 };
+my $payload_of_ksuid = Sub::Util::set_subname( payload_of_ksuid => sub {
+    substr $_[0], 4, 20;
+});
 
-my $next_ksuid = sub {
+my $next_ksuid = Sub::Util::set_subname( next_ksuid => sub {
     my $k = shift;
 
     my $time = $k->$time_of_ksuid;
@@ -150,9 +153,9 @@ my $next_ksuid = sub {
     }
 
     create_ksuid( $time, join '', reverse @parts );
-};
+});
 
-my $previous_ksuid = sub {
+my $previous_ksuid = Sub::Util::set_subname( previous_ksuid => sub {
     my $k = shift;
 
     my $time = $k->$time_of_ksuid;
@@ -169,7 +172,7 @@ my $previous_ksuid = sub {
     }
 
     create_ksuid( $time, join '', reverse @parts );
-};
+});
 
 # Distrustful user-facing functions
 
@@ -268,9 +271,9 @@ sub is_ksuid_string {
 
 use overload
     '""' => \&string,
-    'eq' => sub { "$_[0]" eq "$_[1]" },
-    'lt' => sub { "$_[0]" lt "$_[1]" },
-    'gt' => sub { "$_[0]" gt "$_[1]" },
+    'eq' => Sub::Util::set_subname( eq => sub { "$_[0]" eq "$_[1]" } ),
+    'lt' => Sub::Util::set_subname( lt => sub { "$_[0]" lt "$_[1]" } ),
+    'gt' => Sub::Util::set_subname( gt => sub { "$_[0]" gt "$_[1]" } ),
 ;
 
 sub new {
