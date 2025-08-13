@@ -9,7 +9,6 @@ is [ sort keys %Data::KSUID:: ], [qw|
     BEGIN
     EXPORT_OK
     EXPORT_TAGS
-    ISA
     MAX
     MAX_STRING
     MIN
@@ -19,6 +18,7 @@ is [ sort keys %Data::KSUID:: ], [qw|
     bytes
     create_ksuid
     create_ksuid_string
+    import
     is_ksuid
     is_ksuid_string
     ksuid_to_string

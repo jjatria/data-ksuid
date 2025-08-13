@@ -6,7 +6,7 @@ use warnings;
 
 our $VERSION = '0.001';
 
-use parent 'Exporter';
+use Exporter 'import';
 
 our @EXPORT_OK = qw(
     create_ksuid
@@ -306,11 +306,11 @@ sub previous {
 }
 
 # Clean our namespace
-delete $Data::KSUID::{$_} for qw(
+delete @Data::KSUID::{qw(
     MAX_TIME
     EPOCH
     KSUID_BASE
     STRING_BASE
-);
+)};
 
 1;
