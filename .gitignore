@@ -4,3 +4,5 @@ cover_db/
 .build/
 nytprof.out
 nytprof/
+Data-KSUID-*/
+Data-KSUID-*.tar.gz
