@@ -265,6 +265,29 @@ and they need to be guaranteed to sort in a specific order.
 
 For the reverse operation, see ["next"](#next).
 
+# CONSTANTS
+
+The following constants are available. These are not exported, but can be
+used via their fully qualified names.
+
+## MIN
+
+The minimum value for a KSUID. A string of 20 null bytes.
+
+## MAX
+
+The maximum value for a KSUID. A string of 20 bytes set to `\xFF`.
+
+## MIN\_STRING
+
+The string representation of the minimum value of a KSUID. A string of
+27 zeroes.
+
+## MAX\_STRING
+
+The string representation of the maximum value of a KSUID. Equivalent to
+stringifying the value of ["MAX"](#max).
+
 # SEE ALSO
 
 - [https://github.com/segmentio/ksuid](https://github.com/segmentio/ksuid)

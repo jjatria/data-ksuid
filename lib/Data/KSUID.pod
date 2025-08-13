@@ -267,6 +267,29 @@ and they need to be guaranteed to sort in a specific order.
 
 For the reverse operation, see L</next>.
 
+=head1 CONSTANTS
+
+The following constants are available. These are not exported, but can be
+used via their fully qualified names.
+
+=head2 MIN
+
+The minimum value for a KSUID. A string of 20 null bytes.
+
+=head2 MAX
+
+The maximum value for a KSUID. A string of 20 bytes set to C<\xFF>.
+
+=head2 MIN_STRING
+
+The string representation of the minimum value of a KSUID. A string of
+27 zeroes.
+
+=head2 MAX_STRING
+
+The string representation of the maximum value of a KSUID. Equivalent to
+stringifying the value of L</MAX>.
+
 =head1 SEE ALSO
 
 =over
