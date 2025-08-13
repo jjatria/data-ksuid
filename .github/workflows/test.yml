@@ -1,0 +1,71 @@
+name: Test
+
+on:
+  pull_request:
+    branches:
+      - main
+  push:
+    branches:
+      - main
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ ubuntu-latest ]
+
+        # Some supported Perl versions except latest.
+        perl: [
+          '5.10',
+          '5.20',
+          '5.30', '5.32', '5.34', '5.36', '5.38',
+          '5.40',
+        ]
+
+        # Variants of the latest Perl.
+        include:
+          - os: macos-latest
+            perl: latest
+
+          - os: windows-latest
+            perl: latest
+
+          # This is effectively our normal one: all features and cover.
+          - name: ' (all)'
+            os: ubuntu-latest
+            perl: latest
+            cover: true
+
+    runs-on: ${{ matrix.os }}
+
+    name: v${{ matrix.perl }} on ${{ matrix.os }}${{ matrix.name }}
+
+    steps:
+      - uses: actions/checkout@v2
+
+      - uses: shogo82148/actions-setup-perl@v1
+        with:
+          perl-version: ${{ matrix.perl }}
+
+      - name: Show diagnostics
+        run: |
+          perl -v
+          cpanm --showdeps .
+
+      - if: ${{ matrix.cover }}
+        run: |
+          cpanm -n Devel::Cover::Report::Coveralls
+
+      - name: Build
+        run: |
+          perl Build.PL
+          perl Build build
+
+      - if: ${{ matrix.cover }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: cover -report Coveralls -test
+
+      - if: ${{ !matrix.cover }}
+        run: perl Build test
