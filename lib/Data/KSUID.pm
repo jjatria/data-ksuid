@@ -270,10 +270,10 @@ sub is_ksuid_string {
 ## OO interface
 
 use overload
-    '""' => \&string,
-    'eq' => Sub::Util::set_subname( eq => sub { "$_[0]" eq "$_[1]" } ),
-    'lt' => Sub::Util::set_subname( lt => sub { "$_[0]" lt "$_[1]" } ),
-    'gt' => Sub::Util::set_subname( gt => sub { "$_[0]" gt "$_[1]" } ),
+    '""'  => \&string,
+    'cmp' => Sub::Util::set_subname( cmp => sub {
+        $_[0]->bytes cmp $_[1]->bytes
+    }),
 ;
 
 sub new {

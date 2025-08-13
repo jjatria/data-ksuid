@@ -5,9 +5,7 @@ use Test2::V0 -target => 'Data::KSUID';
 is [ sort keys %Data::KSUID:: ], [qw|
     (""
     ((
-    (eq
-    (gt
-    (lt
+    (cmp
     BEGIN
     EXPORT_OK
     EXPORT_TAGS
