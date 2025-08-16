@@ -53,6 +53,13 @@ jobs:
           perl -v
           cpanm --showdeps .
 
+      # FIXME: Why do we need to install M:B:T manually
+      # if cpanm --showdeps correctly reports it as a dependency?
+      - name: Install dependencies
+        run: |
+          cpanm --installdeps -n .
+          cpanm -n Module::Build::Tiny
+
       - if: ${{ matrix.cover }}
         run: |
           cpanm -n Devel::Cover::Report::Coveralls
