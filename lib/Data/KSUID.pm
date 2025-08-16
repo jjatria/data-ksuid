@@ -4,7 +4,7 @@ package Data::KSUID;
 use strict;
 use warnings;
 
-our $VERSION = '0.001';
+our $VERSION = '0.002';
 
 use Exporter 'import';
 
