@@ -2,19 +2,7 @@
 
 use Test2::V0 -target => 'Data::KSUID';
 
-is [ sort keys %Data::KSUID:: ], [qw|
-    (""
-    ((
-    (cmp
-    BEGIN
-    EXPORT_OK
-    EXPORT_TAGS
-    MAX
-    MAX_STRING
-    MIN
-    MIN_STRING
-    VERSION
-    __ANON__
+is [ sort grep /^[a-z_]+$/, keys %Data::KSUID:: ], [qw(
     bytes
     create_ksuid
     create_ksuid_string
@@ -34,6 +22,8 @@ is [ sort keys %Data::KSUID:: ], [qw|
     string_to_ksuid
     time
     time_of_ksuid
-|] => 'No unexpected methods in namespace';
+)] => 'No unexpected methods in namespace';
+
+ok $Data::KSUID::{$_}, $_ for qw( MIN MAX MIN_STRING MAX_STRING );
 
 done_testing;
